@@ -18,7 +18,7 @@ message Laptop {
     CPU cpu = 4;
     Memory ram = 5;
     repeated GPU gpus = 6;
-    repeated Storage storage = 7;
+    repeated Storage storages = 7;
     Screen screen = 8;
     Keyboard keyboard = 9;
     oneof weight {
