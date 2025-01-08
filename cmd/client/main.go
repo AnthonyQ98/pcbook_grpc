@@ -73,7 +73,7 @@ func searchLaptop(laptopClient pb.LaptopServiceClient) {
 		}
 
 		laptop := res.GetLaptop()
-		log.Printf("- found: ", laptop.GetId())
+		log.Print("- found: ", laptop.GetId())
 		log.Printf("  - price: %v", laptop.GetPriceUsd())
 		log.Printf("  - cpu: %v", laptop.GetCpu())
 		log.Printf("  - ram: %v", laptop.GetRam())
