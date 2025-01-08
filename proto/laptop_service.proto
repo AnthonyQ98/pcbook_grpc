@@ -16,10 +16,12 @@ message CreateLaptopResponse {
     string id = 1;
 }
 
-message SearchLaptopRequest { Filter filter = 1;}
+message SearchLaptopRequest {
+    Filter filter = 1;
+}
 
 message SearchLaptopResponse {
- Laptop laptop = 1;
+    Laptop laptop = 1;
 }
 
 service LaptopService {
