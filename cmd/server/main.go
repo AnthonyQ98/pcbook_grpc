@@ -1,7 +1,35 @@
 package main
 
-import "fmt"
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net"
+	"pcbook/pb"
+	"pcbook/service"
+
+	"google.golang.org/grpc"
+)
 
 func main() {
-	fmt.Println("hello world")
+	port := flag.Int("port", 0, "the port number")
+	flag.Parse()
+
+	fmt.Printf("start server on port %d\n", *port)
+
+	laptopServer := service.NewLaptopServer(service.NewInMemoryLaptopStore())
+	grpcServer := grpc.NewServer()
+
+	pb.RegisterLaptopServiceServer(grpcServer, laptopServer)
+
+	address := fmt.Sprintf("0.0.0.0:%d", *port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	err = grpcServer.Serve(listener)
+	if err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }

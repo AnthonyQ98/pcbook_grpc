@@ -38,9 +38,6 @@ func (server *LaptopServer) CreateLaptop(ctx context.Context, req *pb.CreateLapt
 		laptop.Id = id.String()
 	}
 
-	// some heavy processing
-	// time.Sleep(6 * time.Second)
-
 	if err := contextError(ctx); err != nil {
 		return nil, err
 	}
