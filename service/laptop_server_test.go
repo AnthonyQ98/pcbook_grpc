@@ -5,7 +5,7 @@ import (
 	"log"
 	"pcbook/pb"
 	"pcbook/sample"
-	service "pcbook/server"
+	"pcbook/service"
 	"testing"
 
 	"github.com/stretchr/testify/require"
