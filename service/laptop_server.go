@@ -61,6 +61,29 @@ func (server *LaptopServer) CreateLaptop(ctx context.Context, req *pb.CreateLapt
 	return res, nil
 }
 
+func (server *LaptopServer) SearchLaptop(req *pb.SearchLaptopRequest, stream pb.LaptopService_SearchLaptopServer) error {
+	filter := req.GetFilter()
+	log.Printf("receive a search-laptop request with filter: %v", filter)
+
+	err := server.laptopStore.Search(filter, func(laptop *pb.Laptop) error {
+		res := &pb.SearchLaptopResponse{
+			Laptop: laptop,
+		}
+		err := stream.Send(res)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("sent laptop with id: %s", laptop.Id)
+		return nil
+	})
+
+	if err != nil {
+		return status.Errorf(codes.Internal, "cannot search laptop: %v", err)
+	}
+	return nil
+}
+
 func contextError(ctx context.Context) error {
 	switch ctx.Err() {
 	case context.Canceled:
