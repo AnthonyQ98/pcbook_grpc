@@ -1,8 +1,10 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"log"
 	"pcbook/pb"
 
@@ -11,13 +13,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const maxImageSize = 1 << 20
+
 type LaptopServer struct {
 	laptopStore LaptopStore
 	pb.UnimplementedLaptopServiceServer
+	imageStore ImageStore
 }
 
-func NewLaptopServer(store LaptopStore) *LaptopServer {
-	return &LaptopServer{laptopStore: store}
+func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore) *LaptopServer {
+	return &LaptopServer{laptopStore: laptopStore, imageStore: imageStore}
 }
 
 func (server *LaptopServer) CreateLaptop(ctx context.Context, req *pb.CreateLaptopRequest) (*pb.CreateLaptopResponse, error) {
@@ -81,6 +86,76 @@ func (server *LaptopServer) SearchLaptop(req *pb.SearchLaptopRequest, stream pb.
 	if err != nil {
 		return status.Errorf(codes.Internal, "cannot search laptop: %v", err)
 	}
+	return nil
+}
+
+func (server *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServer) error {
+	req, err := stream.Recv()
+	if err != nil {
+		return logError(err)
+	}
+
+	laptopID := req.GetInfo().GetLaptopId()
+	imageType := req.GetInfo().GetImageType()
+
+	log.Printf("receive an upload image request for laptop %s with image type %s", laptopID, imageType)
+
+	laptop, err := server.laptopStore.Find(laptopID)
+	if err != nil {
+		return logError(err)
+	}
+
+	if laptop == nil {
+		return logError(status.Errorf(codes.NotFound, "laptop %s is not found", laptopID))
+	}
+
+	imageData := bytes.Buffer{}
+	imageSize := 0
+	for {
+		if err := contextError(stream.Context()); err != nil {
+			return err
+		}
+		log.Printf("waiting for chunk data")
+
+		req, err := stream.Recv()
+		if err == io.EOF {
+			log.Print("no more data")
+			break
+		}
+
+		if err != nil {
+			return logError(err)
+		}
+
+		chunk := req.GetChunkData()
+		imageSize += len(chunk)
+
+		log.Printf("received a chunk with size: %d", len(chunk))
+
+		if imageSize > maxImageSize {
+			return logError(status.Errorf(codes.ResourceExhausted, "image size too large: %d > %d", imageSize, maxImageSize))
+		}
+
+		_, err = imageData.Write(chunk)
+		if err != nil {
+			return logError(err)
+		}
+	}
+
+	imageID, err := server.imageStore.Save(laptopID, imageType, imageData)
+	if err != nil {
+		return logError(err)
+	}
+
+	res := &pb.UploadImageResponse{
+		Id:   imageID,
+		Size: uint32(imageSize),
+	}
+	err = stream.SendAndClose(res)
+	if err != nil {
+		return logError(err)
+	}
+	log.Printf("saved image with id: %s and size: %d", imageID, imageSize)
 	return nil
 }
 

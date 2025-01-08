@@ -71,7 +71,7 @@ func TestServerCreateLaptop(t *testing.T) {
 
 			log.Printf("test case: %s", tc.name)
 
-			server := service.NewLaptopServer(tc.store)
+			server := service.NewLaptopServer(tc.store, nil)
 			res, err := server.CreateLaptop(context.Background(), req)
 			if tc.code == codes.OK {
 				require.NoError(t, err)
