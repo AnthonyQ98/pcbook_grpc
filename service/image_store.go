@@ -38,7 +38,7 @@ func (store *DiskImageStore) Save(ImageID string, imageType string, imageData by
 		return "", err
 	}
 
-	imagePath := fmt.Sprintf("%s/%s.%s", store.imageFolder, imageID, imageType)
+	imagePath := fmt.Sprintf("%s/%s%s", store.imageFolder, imageID, imageType)
 
 	file, err := os.Create(imagePath)
 	if err != nil {
