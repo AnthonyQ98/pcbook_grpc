@@ -18,11 +18,12 @@ const maxImageSize = 1 << 20
 type LaptopServer struct {
 	laptopStore LaptopStore
 	pb.UnimplementedLaptopServiceServer
-	imageStore ImageStore
+	imageStore  ImageStore
+	ratingStore RatingStore
 }
 
-func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore) *LaptopServer {
-	return &LaptopServer{laptopStore: laptopStore, imageStore: imageStore}
+func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore, ratingStore RatingStore) *LaptopServer {
+	return &LaptopServer{laptopStore: laptopStore, imageStore: imageStore, ratingStore: ratingStore}
 }
 
 func (server *LaptopServer) CreateLaptop(ctx context.Context, req *pb.CreateLaptopRequest) (*pb.CreateLaptopResponse, error) {
@@ -156,6 +157,55 @@ func (server *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServe
 		return logError(err)
 	}
 	log.Printf("saved image with id: %s and size: %d", imageID, imageSize)
+	return nil
+}
+
+func (server *LaptopServer) RateLaptop(stream pb.LaptopService_RateLaptopServer) error {
+	for {
+		err := contextError(stream.Context())
+		if err != nil {
+			return err
+		}
+
+		req, err := stream.Recv()
+		if err == io.EOF {
+			log.Print("no more data")
+			break
+		}
+		if err != nil {
+			return logError(err)
+		}
+
+		laptopID := req.GetLaptopId()
+		score := req.GetScore()
+		log.Printf("receive a rate-laptop request with laptop id: %s and rating: %v", laptopID, score)
+
+		found, err := server.laptopStore.Find(laptopID)
+		if err != nil {
+			return logError(err)
+		}
+
+		if found == nil {
+			return logError(status.Errorf(codes.NotFound, "laptop %s is not found", laptopID))
+		}
+
+		rating, err := server.ratingStore.Add(laptopID, score)
+		if err != nil {
+			return logError(err)
+		}
+
+		res := &pb.RateLaptopResponse{
+			LaptopId:     laptopID,
+			RatedCount:   rating.Count,
+			AverageScore: rating.Sum / float64(rating.Count),
+		}
+
+		err = stream.Send(res)
+		if err != nil {
+			return logError(err)
+		}
+		log.Printf("sent rate-laptop response with rated count: %d and average score: %v", rating.Count, rating.Sum/float64(rating.Count))
+	}
 	return nil
 }
 
