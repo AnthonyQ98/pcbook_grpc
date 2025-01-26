@@ -1,5 +1,5 @@
 gen:
-	protoc --proto_path=proto proto/*.proto --go_out=./pb --go-grpc_out=./pb
+	protoc --proto_path=proto proto/*.proto --go_out=./pb --go-grpc_out=./pb --grpc-gateway_out=:pb --openapiv2_out=:openapiv2
 
 clean:
 	rm pb/*pb.go
@@ -19,6 +19,10 @@ server2-tls:
 
 server:
 	go run cmd/server/main.go --port 8080
+
+rest:
+	go run cmd/server/main.go --port 8081 --type rest
+
 
 client:
 	go run cmd/client/main.go --address 0.0.0.0:8080
